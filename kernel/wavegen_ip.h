@@ -10,10 +10,11 @@
 bool waveGenOpen();
 
 #endif 
-void setChannelMode(uint32_t channel, uint32_t mode);
-void setFrequency(uint32_t channel, uint32_t frequency);
-void setDutyCycle(uint32_t channel, uint32_t dutyCycle);
-void setAmplitude(uint32_t channel, uint32_t amplitude);
-void setOffset(uint32_t channel, int32_t offset);
-void setCycles(uint32_t channel, uint32_t cycles);
-void setRun(uint32_t channel, uint32_t run);
+void setChannelMode(volatile uint32_t channel,volatile uint32_t mode);
+void setFrequency(volatile uint32_t channel,volatile uint32_t frequency);
+void setDutyCycle(volatile uint32_t channel,volatile uint32_t dutyCycle);
+void setAmplitude(volatile uint32_t channel,volatile uint32_t amplitude);
+void setOffset(volatile uint32_t channel,volatile int32_t offset_fp);
+void setCycles(volatile uint32_t channel,volatile uint32_t cycles);
+void setRun(volatile uint32_t channel,volatile uint32_t run);
+void getStatus();
