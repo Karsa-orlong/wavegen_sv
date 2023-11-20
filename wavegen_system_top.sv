@@ -85,8 +85,11 @@ module wavegen_system_top(
     wire [31:00] ofst_W_I;
     wire [31:00] runn_W_I;
 
+    //CLK 100MHZ and MODULE ENABLES
+    wire clk = CLK100;
+
     //----------- Begin Cut here for INSTANTIATION Template ---// INST_TAG
-vio_1 axitest (
+vio_0 axitest (
   .clk(clk),              // input wire clk
   .probe_in0(ampl_W_I),  // input wire [31 : 0] probe_in0
   .probe_in1(cycl_W_I),  // input wire [31 : 0] probe_in1
@@ -95,7 +98,9 @@ vio_1 axitest (
   .probe_in4(deltaPhaseB),  // input wire [31 : 0] probe_in4
   .probe_in5(mode_W_I),  // input wire [31 : 0] probe_in5
   .probe_in6(ofst_W_I),  // input wire [31 : 0] probe_in6
-  .probe_in7(runn_W_I)  // input wire [31 : 0] probe_in7
+  .probe_in7(runn_W_I),  // input wire [31 : 0] probe_in7
+  .probe_in8(dacA_Val),
+  .probe_in9(dacB_Val)
 );
 
 //AXI bus register space
@@ -114,54 +119,51 @@ vio_1 axitest (
     reg signed [15:0] offset_dc_A;
     reg signed [15:0] offset_dc_B;
 
-//     reg signed [31:0] ampl_regVal;
-//     reg signed [15:0] amplA_R;
-//     reg signed [15:0] amplB_R;
+    reg signed [31:0] ampl_regVal;
+    reg signed [15:0] amplA_R;
+    reg signed [15:0] amplB_R;
     
-//     reg signed [31:0] dutyCyc_regVal;
-//     reg signed [15:0] dutyCycA;
-//     reg signed [15:0] dutyCycB;
+    reg signed [31:0] dutyCyc_regVal;
+    reg signed [15:0] dutyCycA;
+    reg signed [15:0] dutyCycB;
 
-//     reg signed [31:0] cycles_regVal;
-//     reg signed [15:0] cyclesA;
-//     reg signed [15:0] cyclesB;
+    reg signed [31:0] cycles_regVal;
+    reg signed [15:0] cyclesA;
+    reg signed [15:0] cyclesB;
 
-// // Required Variables
-//     reg [31:0] freqA_count;
-//     reg [31:0] freqB_count;
+// Required Variables
+    reg [31:0] freqA_count;
+    reg [31:0] freqB_count;
 
 // //TIE AXI WIRES TO REGISTERS AND EXTRACT NECESSARY REGISTERS
     assign mode_regVal = mode_W_I;
-//     assign run_regVal = runn_W_I;
-//     assign freqA_regVal = frqA_W_I;
-//     assign freqB_regVal = frqB_W_I;
+    assign run_regVal = runn_W_I;
+    assign freqA_regVal = frqA_W_I;
+    assign freqB_regVal = frqB_W_I;
     assign offset_regVal = ofst_W_I;
-//     assign ampl_regVal = ampl_W_I;
-//     assign dutyCyc_regVal = dCyc_W_I;
-//     assign cycles_regVal = cycl_W_I;
+    assign ampl_regVal = ampl_W_I;
+    assign dutyCyc_regVal = dCyc_W_I;
+    assign cycles_regVal = cycl_W_I;
 
     assign modeA = mode_regVal[2:0];
     assign modeB = mode_regVal[5:3];
-//     assign runA = run_regVal[0];
-//     assign runB = run_regVal[1];
+    assign runA = run_regVal;
+    assign runB = run_regVal;
     assign offset_dc_A = offset_regVal[15:0];
     assign offset_dc_B = offset_regVal[31:16];
-//     assign amplA = ampl_regVal[15:0];
-//     assign amplB = ampl_regVal[31:16];
-//     assign dutyCycA = dutyCyc_regVal[15:0];
-//     assign dutyCycB = dutyCyc_regVal[31:16];
-//     assign cyclesA = cycles_regVal[15:0];
-//     assign cyclesB = cycles_regVal[31:16];
+    assign amplA = ampl_regVal[15:0];
+    assign amplB = ampl_regVal[31:16];
+    assign dutyCycA = dutyCyc_regVal[15:0];
+    assign dutyCycB = dutyCyc_regVal[31:16];
+    assign cyclesA = cycles_regVal[15:0];
+    assign cyclesB = cycles_regVal[31:16];
 
-    assign freqA_count = 100000000/freqA_regVal; // 100Mhz/desired frequency
-    assign freqB_count = 100000000/freqB_regVal;
+    assign freqA_count = 100000000 / freqA_regVal; // 100Mhz/desired frequency
+    assign freqB_count = 100000000 / freqB_regVal;
 
-//CLK 100MHZ and MODULE ENABLES
-    wire clk = CLK100;
 
 // SPI WIRES TO DAC BLOCK
     wire cs_connect;
-    // wire clk_spi_connect;
     wire sdi_connect;
     wire ldac_connect;
 
@@ -190,7 +192,7 @@ vio_1 axitest (
 
     getClock spi(.clk(clk), .count_to_freq(spi_clk_count),.out_clk1(clk_spibus)); // Get a 2Mhz  Spi Clk
 
-        spiModule spiwrite (
+    spiModule spiwrite (
         .clk(clk),
         .clk_spi(clk_spibus),
         .dacA_in(dacA_Val),         // dacA_Val and dacB_Val will be final values output from the modules
@@ -231,97 +233,7 @@ vio_1 axitest (
     assign pulse_50KHz   =  CLK50K & ~clk_50KHz_del   ; 
 
 //SYNC END
-
-//Frequency desired and swing between -Amplitude to +Amplitude
-//SQUARE WAVE VARS
-    // Instantiate dcOut module
-    dcOut dc_inst(
-        .clk(clk),
-        .clk_sampling(pulse_50KHz),
-        .enableA(dcOffsetEnable_A),
-        .enableB(dcOffsetEnable_B),
-        .dc_ofsA(offset_dc_A),
-        .dc_ofsB(offset_dc_B),
-        .dacA_dc_fin(dacA_dc),
-        .dacB_dc_fin(dacB_dc)
-    );
-
-        // Instantiate squareWave module for Channel A
-    squareWave squareA_inst(
-        .clk(clk),
-        .clk_sampling(pulse_50KHz),
-        .clkA(clk_variableA),
-        .clkB(clk_variableB),
-
-        .enableA(squareEnable_A),
-        .enableB(squareEnable_B),
-
-        .dc_ofsA(offset_dc_A),
-        .dc_ofsB(offset_dc_B),
-        .ampl_A(amplA),
-        .ampl_B(amplB),
-        .dutyA(16'd1),
-        .dutyB(16'd1),
-
-        .dacA_sq_signed(dacA_sq),
-        .dacB_sq_signed(dacB_sq)
-    );
-
-    sawToothWave saw (
-        .clk(clk),                      // Provide the main clock
-        .clk_sampling(pulse_50KHz),       // Provide the sampling clock
-        // .enableA(sawtoothEnable_A),
-        // .enableB(sawtoothEnable_B),
-        .enableA(1'b1),
-        .enableB(1'b1),
-        .dc_ofsA(offset_dc_A),
-        .dc_ofsB(offset_dc_B),
-        .maxStepCountA(stepcountA),  // Number of writes for desired frequency A
-        .maxStepCountB(stepcountB),  // Number of writes for desired frequency B
-        .stepValA(stepValA),            // Step value for A
-        .stepValB(stepValB),            // Step value for B
-
-        .dacA_saw_fin(dacA_saw), // Output for DAC A
-        .dacB_saw_fin(dacB_saw)  // Output for DAC B
-    );
-
-    triangleWave triangle (
-        .clk(clk),
-        .clk_sampling(pulse_50KHz),
-        .enableA(triangleEnable_A),
-        .enableB(triangleEnable_B),
-        .dc_ofsA(offset_dc_A),
-        .dc_ofsB(offset_dc_B),
-        .halfMaxStepCountA(stepcountA),
-        .halfMaxStepCountB(stepcountB),
-        .stepValA(stepValA),
-        .stepValB(stepValB_probe),
-        .dacA_tri_fin(dacA_tri),
-        .dacB_tri_fin(dacB_tri)
-    );
-
-
-        sineWave sine_inst (
-        .clk(clk),
-        .clk_sampling(pulse_50KHz),
-        .enableA(sineEnable_A),
-        .enableB(sineEnable_B),
-        .dc_ofsA(offset_dc_A),
-        .dc_ofsB(offset_dc_B),
-        .ampl_A(amplA),
-        .ampl_B(amplB),
-        .phaseA_offset(16'd0),
-        .phaseB_offset(16'd0),
-        .delta_phaseA(deltaPhaseA),
-        .delta_phaseB(deltaPhaseB),
-        .dacA_sine_fin(dacA_sine),
-        .dacB_sine_fin(dacB_sine)
-    );
-
-
-
-//MODE SELECTION FOR CHANNEL A AND B AND CHANNEL ENABLES
-
+    //MODE SELECTION FOR CHANNEL A AND B AND CHANNEL ENABLES
     reg dcOffsetEnable_A, sineEnable_A, sawtoothEnable_A, triangleEnable_A, squareEnable_A, arbitaryEnable_A;
     reg dcOffsetEnable_B, sineEnable_B, sawtoothEnable_B, triangleEnable_B, squareEnable_B, arbitaryEnable_B;
 
@@ -363,9 +275,6 @@ vio_1 axitest (
 
     reg [31:0] freqA_regVal;
     reg [31:0] freqB_regVal;
-    
-    // reg signed [15:0] offset_dc_A;
-    // reg signed [15:0] offset_dc_B;
 
     reg signed [15:0] amplA;
     reg signed [15:0] amplB;
@@ -373,116 +282,108 @@ vio_1 axitest (
     reg [2:0] modeA_R;
     reg [2:0] modeB_R;
 
-//----------- Begin Cut here for INSTANTIATION Template ---// INST_TAG
-vio_0 allModsTest (
-  .clk(clk),                // input wire clk
-  .probe_in0(dacA_Val),    // input wire [11 : 0] probe_in0
-  .probe_in1(dacB_Val),    // input wire [11 : 0] probe_in1
-  .probe_in2(dcOffsetEnable_A),    // input wire [15 : 0] probe_in2
-  .probe_in3(dcOffsetEnable_B),    // input wire [31 : 0] probe_in3
-  .probe_in4(offset_dc_A),    // input wire [15 : 0] probe_in4
-  .probe_in5(offset_dc_B),    // input wire [15 : 0] probe_in5
-//   .probe_out0(modeA),  // output wire [2 : 0] probe_out0
-//   .probe_out1(modeB),  // output wire [2 : 0] probe_out1
-  .probe_out2(freqA_regVal),  // output wire [31 : 0] probe_out2
-  .probe_out3(freqB_regVal),  // output wire [31 : 0] probe_out3
-  .probe_out4(amplA),  // output wire [15 : 0] probe_out4
-  .probe_out5(amplB)  // output wire [15 : 0] probe_out5
-//   .probe_out6(offset_dc_A),  // output wire [15 : 0] probe_out6
-//   .probe_out7(offset_dc_B)  // output wire [15 : 0] probe_out7
-);
-
 
     // Enable the respective modules for Channel A
-    always_ff @(posedge clk) begin
-        if (pulse_50KHz) begin
+    always_ff @(posedge clk)
+    begin
+        if (pulse_50KHz)
+        begin
             // Default: Disable all modules for Channel A
-            dcOffsetEnable_A <= 1'b0;
-            sineEnable_A <= 1'b0;
-            sawtoothEnable_A <= 1'b0;
-            triangleEnable_A <= 1'b0;
-            squareEnable_A <= 1'b0;
-            arbitaryEnable_A <= 1'b0;
+            dcOffsetEnable_A    <= 1'b0;
+            sineEnable_A        <= 1'b0;
+            sawtoothEnable_A    <= 1'b0;
+            triangleEnable_A    <= 1'b0;
+            squareEnable_A      <= 1'b0;
+            arbitaryEnable_A    <= 1'b0;
 
             case (modeA)
-                6'd0: begin
-                    dcOffsetEnable_A <= 1'b1;           // Enable DC Offset for Channel A
-                    dacA_Val <= dacA_dc;
+                begin
+                    dcOffsetEnable_A    <= 1'b1;                                        // Enable DC Offset for Channel A
+                    dacA_Val            <= dacA_dc;
                 end
-                6'd1: begin
-                    sineEnable_A <= 1'b1;               // Enable Sine for Channel A
-                    deltaPhaseA <= ((freqA_regVal*32'hFFFFFFFF)/50000); // 32 bit accumulator step value
-                    dacA_Val <= dacA_sine;
+                6'd1:
+                begin
+                    sineEnable_A        <= 1'b1;                                        // Enable Sine for Channel A
+                    deltaPhaseA         <= ((freqA_regVal * 32'hFFFFFFFF) / 50000);     // 32 bit accumulator step value
+                    dacA_Val            <= dacA_sine;
                 end
-                6'd2: begin
-                    sawtoothEnable_A <= 1'b1;           // Enable Sawtooth for Channel A
-                    stepcountA <= 50000/freqA_regVal;
-                    stepValA <= amplA/stepcountA;
-                    dacA_Val <= dacA_saw;
+                6'd2:
+                begin
+                    sawtoothEnable_A    <= 1'b1;                                        // Enable Sawtooth for Channel A
+                    stepcountA          <= 50000 / freqA_regVal;
+                    stepValA            <= ((2 * amplA )/ stepcountA);
+                    dacA_Val            <= dacA_saw;
                 end
-                6'd3: begin
-                    triangleEnable_A <= 1'b1;           // Enable Triangle for Channel A
-                    stepcountA <= 25000/freqA_regVal;
-                    stepValA <= (amplA/stepcountA);
-                    dacA_Val <= dacA_tri;
+                6'd3:
+                begin
+                    triangleEnable_A    <= 1'b1;                                        // Enable Triangle for Channel A
+                    stepcountA          <= 25000 / freqA_regVal;
+                    stepValA            <= ((2 * amplA) / stepcountA));
+                    dacA_Val            <= dacA_tri;
                 end
-                6'd4: begin
-                    squareEnable_A <= 1'b1;             // Enable Square for Channel A
-                    dacA_Val <= dacA_sq;
+                6'd4:
+                begin
+                    squareEnable_A      <= 1'b1;                                        // Enable Square for Channel A
+                    dacA_Val            <= dacA_sq;
                 end
-                6'd5: begin
-                    arbitaryEnable_A <= 1'b1;           // Enable Arbitrary for Channel A
+                6'd5:
+                begin
+                    arbitaryEnable_A    <= 1'b1;                                        // Enable Arbitrary for Channel A
                     // dacA_Val <= dacA_arb;
                 end
             endcase
         end
     end
     // Enable the respective modules for Channel B
-    always_ff @(posedge clk) begin
-        if (pulse_50KHz) begin
+    always_ff @(posedge clk)
+    begin
+        if (pulse_50KHz)
+        begin
             // Default: Disable all modules for Channel B
-            dcOffsetEnable_B <= 1'b0;
-            sineEnable_B <= 1'b0;
-            sawtoothEnable_B <= 1'b0;
-            triangleEnable_B <= 1'b0;
-            squareEnable_B <= 1'b0;
-            arbitaryEnable_B <= 1'b0;
+            dcOffsetEnable_B    <= 1'b0;
+            sineEnable_B        <= 1'b0;
+            sawtoothEnable_B    <= 1'b0;
+            triangleEnable_B    <= 1'b0;
+            squareEnable_B      <= 1'b0;
+            arbitaryEnable_B    <= 1'b0;
                 // For modeB
-                case (modeB)
-                    6'd0: begin
-                        dcOffsetEnable_B <= 1'b1;           // Enable DC Offset for Channel B
-                        dacB_Val <= dacB_dc;
-                    end
-                    6'd1: begin
-                        sineEnable_B <= 1'b1;               // Enable Sine for Channel B
-                        deltaPhaseB <= ((freqB_regVal*32'hFFFFFFFF)/50000); // 32 bit accumulator step value
-                        dacB_Val <= dacB_sine;
-                    end
-                    6'd2: begin
-                        sawtoothEnable_B <= 1'b1;           // Enable Sawtooth for Channel B
-                        stepcountB <= 50000/freqB_regVal;
-                        mul_resultB <= (amplB*freqB_regVal);
-                        mul_resultB <= (mul_resultB/50000);
-                        stepValB <= mul_resultB;
-                        dacB_Val <= dacB_saw;
-                    end
-                    6'd3: begin
-                        triangleEnable_B <= 1'b1;           // Enable Triangle for Channel B
-                        stepcountB <= 25000/freqB_regVal;
-                        mul_resultB <= (amplB*freqB_regVal);
-                        mul_resultB <= (mul_resultB/25000);
-                        stepValB <= mul_resultB;
-                        dacB_Val <= dacB_tri;
-                    end
-                    6'd4: begin
-                        squareEnable_B <= 1'b1;             // Enable Square for Channel B
-                        dacB_Val <= dacB_sq;
-                    end
-                    6'd5: begin
-                        arbitaryEnable_B <= 1'b1;           // Enable Arbitrary for Channel B
-                        // dacB_Val <= dacB_arb;
-                    end
-                endcase
+            case (modeB)
+                6'd0:
+                begin
+                    dcOffsetEnable_B    <= 1'b1;                                        // Enable DC Offset for Channel B
+                    dacB_Val            <= dacB_dc;
+                end
+                6'd1:
+                begin
+                    sineEnable_B        <= 1'b1;                                        // Enable Sine for Channel B
+                    deltaPhaseB         <= ((freqB_regVal * 32'hFFFFFFFF) / 50000);     // 32 bit accumulator step value
+                    dacB_Val            <= dacB_sine;
+                end
+                6'd2:
+                begin
+                    sawtoothEnable_B    <= 1'b1;                                        // Enable Sawtooth for Channel B
+                    stepcountB          <= 50000 / freqB_regVal;
+                    stepValB            <= ((2 * amplB) / stepcountB);
+                    dacB_Val            <= dacB_saw;
+                end
+                6'd3:
+                begin
+                    triangleEnable_B    <= 1'b1;                                        // Enable Triangle for Channel B
+                    stepcountB          <= 25000 / freqB_regVal;
+                    stepValB            <= ((2 * amplB) / stepcountB));
+                    dacB_Val            <= dacB_tri;
+                end
+                6'd4:
+                begin
+                    squareEnable_B      <= 1'b1;                                        // Enable Square for Channel B
+                    dacB_Val            <= dacB_sq;
+                end
+                6'd5:
+                begin
+                    arbitaryEnable_B    <= 1'b1;                                        // Enable Arbitrary for Channel B
+                    // dacB_Val <= dacB_arb;
+                end
+            endcase
         end
     end
 
@@ -519,6 +420,87 @@ vio_0 allModsTest (
         .runn_W_O(runn_W_I)                         // Get register values from lower levels
     );
 
+    // Instantiate dcOut module
+    dcOut dc_inst(
+        .clk(clk),
+        .clk_sampling(pulse_50KHz),
+        .enableA(dcOffsetEnable_A),
+        .enableB(dcOffsetEnable_B),
+        .dc_ofsA(offset_dc_A),
+        .dc_ofsB(offset_dc_B),
+        .dacA_dc_fin(dacA_dc),
+        .dacB_dc_fin(dacB_dc)
+    );
+
+    // Instantiate squareWave module for Channel A
+    squareWave square_inst(
+        .clk(clk),
+        .clk_sampling(pulse_50KHz),
+        .clkA(clk_variableA),
+        .clkB(clk_variableB),
+
+        .enableA(squareEnable_A),
+        .enableB(squareEnable_B),
+
+        .dc_ofsA(offset_dc_A),
+        .dc_ofsB(offset_dc_B),
+        .ampl_A(amplA),
+        .ampl_B(amplB),
+        .dutyA(16'd1),
+        .dutyB(16'd1),
+
+        .dacA_sq_signed(dacA_sq),
+        .dacB_sq_signed(dacB_sq)
+    );
+
+    sawToothWave saw_inst (
+        .clk(clk),                          // Provide the main clock
+        .clk_sampling(pulse_50KHz),         // Provide the sampling clock
+        .enableA(sawtoothEnable_A),
+        .enableB(sawtoothEnable_B),
+        .ampl_A(amplA),
+        .ampl_B(ampl_B),
+        .dc_ofsA(offset_dc_A),
+        .dc_ofsB(offset_dc_B),
+        .maxStepCountA(stepcountA),         // Number of writes for desired frequency A
+        .maxStepCountB(stepcountB),         // Number of writes for desired frequency B
+        .stepValA(stepValA),                // Step value for A
+        .stepValB(stepValB),                // Step value for B
+
+        .dacA_saw_fin(dacA_saw),            // Output for DAC A
+        .dacB_saw_fin(dacB_saw)             // Output for DAC B
+    );
+
+    triangleWave triangle_inst (
+        .clk(clk),
+        .clk_sampling(pulse_50KHz),
+        .enableA(triangleEnable_A),
+        .enableB(triangleEnable_B),
+        .dc_ofsA(offset_dc_A),
+        .dc_ofsB(offset_dc_B),
+        .halfMaxStepCountA(stepcountA),
+        .halfMaxStepCountB(stepcountB),
+        .stepValA(stepValA),
+        .stepValB(stepValB_probe),
+        .dacA_tri_fin(dacA_tri),
+        .dacB_tri_fin(dacB_tri)
+    );
+
+
+    sineWave sine_inst (
+        .clk(clk),
+        .clk_sampling(pulse_50KHz),
+        .enableA(sineEnable_A),
+        .enableB(sineEnable_B),
+        .dc_ofsA(offset_dc_A),
+        .dc_ofsB(offset_dc_B),
+        .ampl_A(amplA),
+        .ampl_B(amplB),
+        .phaseA_offset(16'd0),
+        .phaseB_offset(16'd0),
+        .delta_phaseA(deltaPhaseA),
+        .delta_phaseB(deltaPhaseB),
+        .dacA_sine_fin(dacA_sine),
+        .dacB_sine_fin(dacB_sine)
+    );
 endmodule
-
-

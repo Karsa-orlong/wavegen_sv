@@ -14,25 +14,26 @@
 //   PMOD C is connected to SPI bus which writes to DAC and gives 2 waves in DAC A and DAC B
 //-----------------------------------------------------------------------------
 
-#include <stdlib.h>          // EXIT_ codes
-#include <stdio.h>           // printf
+#include <stdlib.h> // EXIT_ codes
+#include <stdio.h>  // printf
 #include <stdint.h>
-#include <string.h>          // strcmp
-#include "wavegen_ip.h"      // wavegen ip library
+#include <string.h>     // strcmp
+#include "wavegen_ip.h" // wavegen ip library
 #include "wavegenIp_regs.h"
 
-#define printd(format, ...) printf("[DEBUG][%d][%s][%s] " format "\n", __LINE__,__FILE__, __func__, ##__VA_ARGS__) // Debug print
+#define printd(format, ...) printf("[DEBUG][%d][%s][%s] " format "\n", __LINE__, __FILE__, __func__, ##__VA_ARGS__) // Debug print
 
-#define MODE_DC         0
-#define MODE_SINE       1
-#define MODE_SAWTOOTH   2
-#define MODE_TRIANGLE   3
-#define MODE_SQUARE     4
-#define MODE_ARB        5
+#define MODE_DC 0
+#define MODE_SINE 1
+#define MODE_SAWTOOTH 2
+#define MODE_TRIANGLE 3
+#define MODE_SQUARE 4
+#define MODE_ARB 5
 
-typedef struct {
-    volatile char mode[10];  // "sine", "square", etc.
-    volatile uint32_t channel;    // 'A' or 'B'
+typedef struct
+{
+    volatile char mode[10];    // "sine", "square", etc.
+    volatile uint32_t channel; // 'A' or 'B'
     volatile uint32_t mode_num;
     volatile uint32_t freq;
     volatile float amp;
@@ -42,64 +43,73 @@ typedef struct {
     volatile int isDc;
 } WaveGenArgs;
 
-typedef struct{
+typedef struct
+{
     volatile uint32_t amp_fp;
     volatile int32_t offset_fp;
     volatile uint32_t duty_fp;
 } wavegen_fpArgs;
-void parseArguments(int argc, char* argv[], WaveGenArgs* args, wavegen_fpArgs* fpArgs ) {
+void parseArguments(int argc, char *argv[], WaveGenArgs *args, wavegen_fpArgs *fpArgs)
+{
     // Initialize default values
     args->isDc = 0;
-            printd();
+    printd();
+    strncpy((char *)args->mode, argv[1], sizeof(args->mode));
 
-    if (argc > 4) {
-        strncpy((char *)args->mode, argv[1], sizeof(args->mode));
+    if (argc > 4)
+    {
         args->channel = (argv[2][0] == 'A') ? 0 : 1;
         args->freq = atoi(argv[3]);
         args->amp = atof(argv[4]);
-        fpArgs->amp_fp = (args->amp)*(1<<14);
+        fpArgs->amp_fp = (args->amp) * (1 << 14);
 
-            printd();
+        if      (strcmp((char *)args->mode, "sine") == 0)   args->mode_num = MODE_SINE;
+        else if (strcmp((char *)args->mode, "saw") == 0)    args->mode_num = MODE_SAWTOOTH;
+        else if (strcmp((char *)args->mode, "tri") == 0)    args->mode_num = MODE_TRIANGLE;
+        else if (strcmp((char *)args->mode, "sq") == 0)     args->mode_num = MODE_SQUARE;
+        else if (strcmp((char *)args->mode, "arb") == 0)    args->mode_num = MODE_ARB;
 
-        if(strcmp((char *)args->mode, "dc") == 0) args->mode_num = MODE_DC;
-        else if(strcmp((char *)args->mode, "sine") == 0) args->mode_num = MODE_SINE;
-        else if(strcmp((char *)args->mode, "saw") == 0) args->mode_num = MODE_SAWTOOTH;
-        else if(strcmp((char *)args->mode, "tri") == 0) args->mode_num = MODE_TRIANGLE;
-        else if(strcmp((char *)args->mode, "sq") == 0) args->mode_num = MODE_SQUARE;
-        else if(strcmp((char *)args->mode, "arb") == 0) args->mode_num = MODE_ARB;
-
-            printd();
-
-        if (argc >= 6) {
+        if (argc >= 6)
+        {
             args->offset = atof(argv[5]);
-            fpArgs->offset_fp = (args->offset)*(1 << 14) /2.5;
+            fpArgs->offset_fp = (args->offset) * (1 << 14) / 2.5;
         }
 
-        if (argc >= 7) {
+        if (argc >= 7)
+        {
             args->duty = atof(argv[6]);
-            fpArgs->duty_fp = (args->duty)*(1<<14);
+            fpArgs->duty_fp = (args->duty) * (1 << 14);
+        }
+    }
+
+    else if (argc == 4)
+    {
+        args->channel = (argv[2][0] == 'A') ? 0 : 1;
+
+        if (!strcmp((char *)args->mode, "dc"))
+        {
+            args->mode_num = MODE_DC;
+            args->isDc = 1;
+            args->offset = atof(argv[3]);
+            fpArgs->offset_fp = (args->offset) * (1 << 14) / 2.5;
+            printd();
         }
 
-        if (strcmp((char *)args->mode, "dc") == 0) {
-            args->isDc = 1;
-        } 
-    } 
-    else if(argc == 4){
-                printd();
-
-        args->channel = (argv[2][0] == 'A') ? 0 : 1;
-        args->cycles = atoi(argv[3]);
-        printd();
+        else if (!strcmp((char *)args->mode, "cycles"))
+        {
+            args->cycles = atoi(argv[3]);
+        }
 
     }
-    else {
+    else
+    {
         // Handle invalid number of arguments
         printf("  command not understood\n");
-        // exit(EXIT_FAILURE);
     }
+    printd();
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     /**
      * @brief Variables for different arguments
@@ -107,28 +117,25 @@ int main(int argc, char* argv[])
      * @todo give default values all variables except mode
      * @todo Save the previous values in a file and read them out when run is received
      */
+    printd();
+
     waveGenOpen();
 
     WaveGenArgs args = {0};
     wavegen_fpArgs fpArgs = {0};
-        printd();
 
     parseArguments(argc, argv, &args, &fpArgs);
-        printd();
 
     // Access parsed arguments
-    printf("Mode: %s\n Mode_num %d", args.mode, args.mode_num);
-    printf("Output: %d\n", args.channel);
-    printf("Freq: %u\n", args.freq);
-    printf("Amp: %f, %d\n", args.amp, fpArgs.amp_fp);
-    printf("Offset: %f, %d\n", args.offset, fpArgs.offset_fp);
-    printf("Duty: %f, %d\n", args.duty, fpArgs.duty_fp);
-    printf("Cycles: %u\n", args.cycles);
-    printd();
+    printf("Mode:\t %s \nModN:\t%d\n",    args.mode, args.mode_num);
+    printf("Chan:\t %d \n",               args.channel);
+    printf("Freq:\t %u \n",               args.freq);
+    printf("Ampl:\t %f \t %d\n",          args.amp, fpArgs.amp_fp);
+    printf("Ofst:\t %f \t %d\n",          args.offset, fpArgs.offset_fp);
+    printf("Duty:\t %f \t %d\n",          args.duty, fpArgs.duty_fp);
+    printf("Cycl:\t %u \n",               args.cycles);
 
-    // printf("DC: %s\n", args.isDc ? "true" : "false");
-
-    if(argc == 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))
+    if (argc == 2 && (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0))
     {
         printd();
         printf("  usage:\n");
@@ -146,48 +153,47 @@ int main(int argc, char* argv[])
         printf("  \n");
     }
 
-       // Set the values based on the parsed arguments
-    if (strcmp(argv[1], "dc") == 0) {
-                printd();
-        setChannelMode(args.channel, args.mode_num);  // Assuming mode setting is common for all waveform types
+    // Set the values based on the parsed arguments
+    if (strcmp(argv[1], "dc") == 0)
+    {
+        setChannelMode(args.channel, args.mode_num); // Assuming mode setting is common for all waveform types
         setOffset(args.channel, fpArgs.offset_fp);
         setRun(args.channel, 1);
-                printd();
-    } 
-    else if (strcmp(argv[1], "cycles") == 0) {
-                printd();
-        setCycles(args.channel, args.cycles);  // Set continuous
-                printd();
-    } 
-    
-    else {
-                printd();
-        setChannelMode(args.channel, args.mode_num);  // Assuming mode setting is common for all waveform types
+    }
+    else if (strcmp(argv[1], "cycles") == 0)
+    {
+        setCycles(args.channel, args.cycles); // Set continuous
+    }
+
+    else
+    {
+        setChannelMode(args.channel, args.mode_num); // Assuming mode setting is common for all waveform types
         setFrequency(args.channel, args.freq);
         setAmplitude(args.channel, fpArgs.amp_fp);
         setOffset(args.channel, fpArgs.offset_fp);
         setDutyCycle(args.channel, fpArgs.duty_fp);
         setRun(args.channel, 1);
-                printd();
     }
 
-    if(strcmp(argv[1], "stop") == 0){
+    if (strcmp(argv[1], "stop") == 0)
+    {
         uint8_t i;
-        for(i=0; i<2; i++){
-            setChannelMode(i, 0);  // Assuming mode setting is common for all waveform types
+        for (i = 0; i < 2; i++)
+        {
+            setChannelMode(i, 0); // Assuming mode setting is common for all waveform types
             setFrequency(i, 0);
             setAmplitude(i, 0);
             setOffset(i, 0);
             setDutyCycle(i, 0);
             setRun(args.channel, 0);
         }
-                printd();
     }
 
-    if(strcmp(argv[1], "status") == 0){
-        printd();
-        getStatus();    
+    if (strcmp(argv[1], "status") == 0)
+    {
+        getStatus();
     }
+    printd();
 
     return EXIT_SUCCESS;
 }

@@ -121,12 +121,12 @@ blk_mem_gen_1 coe (
 );
 
 
-ila_0 sine (
-	.clk(clk), // input wire clk
-	.probe0(dacA_word_fin), // input wire [15:0]  probe0  
-	.probe1(dacB_word_fin),
-    .probe2(clk_sampling) // input wire [15:0]  probe1
-);
+//ila_0 sine (
+//	.clk(clk), // input wire clk
+//	.probe0(dacA_word_fin), // input wire [15:0]  probe0  
+//	.probe1(dacB_word_fin),
+//    .probe2(clk_sampling) // input wire [15:0]  probe1
+//);
 
 // ila_0 lut (
 // 	.clk(clk), // input wire clk
@@ -139,6 +139,3 @@ ila_0 sine (
     assign dacB_sine_fin = dacB_word_fin; 
 
 endmodule
-
-
-
